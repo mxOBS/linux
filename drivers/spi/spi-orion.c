@@ -315,7 +315,15 @@ static void orion_spi_set_cs(struct spi_device *spi, bool enable)
 	struct orion_spi *orion_spi;
 
 	orion_spi = spi_master_get_devdata(spi->master);
-
+#if 1
+	orion_spi_clrbits(orion_spi, ORION_SPI_IF_CTRL_REG,
+					  0x1 | ORION_SPI_CS_MASK);
+//	printk ("%d : Control register 0x%x\n",__LINE__, readl(spi_reg(orion_spi, ORION_SPI_IF_CTRL_REG)));
+	if (enable)
+		orion_spi_setbits(orion_spi, ORION_SPI_IF_CTRL_REG,
+			0x1 | ORION_SPI_CS(spi->chip_select)/*(orion_spi->cur_spi->chip_select << 2)*/);
+//	printk ("%d : Control register 0x%x\n",__LINE__, readl(spi_reg(orion_spi, ORION_SPI_IF_CTRL_REG)));
+#else
 	orion_spi_clrbits(orion_spi, ORION_SPI_IF_CTRL_REG, ORION_SPI_CS_MASK);
 	orion_spi_setbits(orion_spi, ORION_SPI_IF_CTRL_REG,
 				ORION_SPI_CS(spi->chip_select));
@@ -325,6 +333,7 @@ static void orion_spi_set_cs(struct spi_device *spi, bool enable)
 		orion_spi_setbits(orion_spi, ORION_SPI_IF_CTRL_REG, 0x1);
 	else
 		orion_spi_clrbits(orion_spi, ORION_SPI_IF_CTRL_REG, 0x1);
+#endif
 }
 
 static inline int orion_spi_wait_till_ready(struct orion_spi *orion_spi)
@@ -347,8 +356,15 @@ orion_spi_write_read_8bit(struct spi_device *spi,
 {
 	void __iomem *tx_reg, *rx_reg, *int_reg;
 	struct orion_spi *orion_spi;
+	bool cs_single_byte;
+
+	cs_single_byte = spi->mode & SPI_1BYTE_CS;
 
 	orion_spi = spi_master_get_devdata(spi->master);
+
+	if (cs_single_byte)
+		orion_spi_set_cs(spi, 1);
+
 	tx_reg = spi_reg(orion_spi, ORION_SPI_DATA_OUT_REG);
 	rx_reg = spi_reg(orion_spi, ORION_SPI_DATA_IN_REG);
 	int_reg = spi_reg(orion_spi, ORION_SPI_INT_CAUSE_REG);
@@ -362,12 +378,23 @@ orion_spi_write_read_8bit(struct spi_device *spi,
 		writel(0, tx_reg);
 
 	if (orion_spi_wait_till_ready(orion_spi) < 0) {
+		if (cs_single_byte) {
+			orion_spi_set_cs(spi, 0);
+			/* Satisfy some SLIC devices requirements */
+			udelay(4);
+		}
 		dev_err(&spi->dev, "TXS timed out\n");
 		return -1;
 	}
 
 	if (rx_buf && *rx_buf)
 		*(*rx_buf)++ = readl(rx_reg);
+
+	if (cs_single_byte) {
+		orion_spi_set_cs(spi, 0);
+		/* Satisfy some SLIC devices requirements */
+		udelay(4);
+	}
 
 	return 1;
 }
@@ -403,6 +430,7 @@ orion_spi_write_read_16bit(struct spi_device *spi,
 	return 1;
 }
 
+#if 0
 static unsigned int
 orion_spi_write_read(struct spi_device *spi, struct spi_transfer *xfer)
 {
@@ -464,13 +492,49 @@ orion_spi_write_read(struct spi_device *spi, struct spi_transfer *xfer)
 out:
 	return xfer->len - count;
 }
+#else
+static unsigned int
+orion_spi_write_read(struct spi_device *spi, struct spi_transfer *xfer)
+{
+	struct orion_spi *orion_spi;
+	unsigned int count;
+	int word_len;
 
+	orion_spi = spi_master_get_devdata(spi->master);
+	word_len = spi->bits_per_word;
+	count = xfer->len;
+
+	if (word_len == 8) {
+		const u8 *tx = xfer->tx_buf;
+		u8 *rx = xfer->rx_buf;
+
+		do {
+			if (orion_spi_write_read_8bit(spi, &tx, &rx) < 0)
+				goto out;
+			count--;
+		} while (count);
+	} else if (word_len == 16) {
+		const u16 *tx = xfer->tx_buf;
+		u16 *rx = xfer->rx_buf;
+
+		do {
+	printk ("Rabeeh - DEBUG ME - got into TRANSFER ONE 16bit\n");
+
+			if (orion_spi_write_read_16bit(spi, &tx, &rx) < 0)
+				goto out;
+			count -= 2;
+		} while (count);
+	}
+
+out:
+	return xfer->len - count;
+}
+#endif
 static int orion_spi_transfer_one(struct spi_master *master,
 					struct spi_device *spi,
 					struct spi_transfer *t)
 {
 	int status = 0;
-
 	status = orion_spi_setup_transfer(spi, t);
 	if (status < 0)
 		return status;
@@ -592,7 +656,7 @@ static int orion_spi_probe(struct platform_device *pdev)
 	}
 
 	/* we support only mode 0, and no options */
-	master->mode_bits = SPI_CPHA | SPI_CPOL;
+	master->mode_bits = SPI_CPHA | SPI_CPOL | SPI_1BYTE_CS;
 	master->set_cs = orion_spi_set_cs;
 	master->transfer_one = orion_spi_transfer_one;
 	master->num_chipselect = ORION_NUM_CHIPSELECTS;

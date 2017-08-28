@@ -1535,6 +1535,8 @@ of_register_spi_device(struct spi_master *master, struct device_node *nc)
 		spi->mode |= SPI_3WIRE;
 	if (of_find_property(nc, "spi-lsb-first", NULL))
 		spi->mode |= SPI_LSB_FIRST;
+	if (of_find_property(nc, "spi-1byte-cs", NULL))
+		spi->mode |= SPI_1BYTE_CS;
 
 	/* Device DUAL/QUAD mode */
 	if (!of_property_read_u32(nc, "spi-tx-bus-width", &value)) {

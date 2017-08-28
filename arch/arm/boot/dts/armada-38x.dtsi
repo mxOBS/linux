@@ -309,34 +309,48 @@
 					marvell,pins = "mpp44";
 					marvell,function = "sata3";
 				};
+
+				tdm_pins: tdm_pins {
+					marvell,pins = "mpp48", "mpp49", "mpp50",
+						       "mpp51", "mpp52", "mpp53";
+					marvell,function = "tdm";
+				};
 			};
 
 			gpio0: gpio@18100 {
-				compatible = "marvell,orion-gpio";
-				reg = <0x18100 0x40>;
+				compatible = "marvell,armada-370-gpio",
+					     "marvell,orion-gpio";
+				reg = <0x18100 0x40>, <0x181c0 0x08>;
+				reg-names = "gpio", "pwm";
 				ngpios = <32>;
 				gpio-controller;
 				#gpio-cells = <2>;
+				#pwm-cells = <2>;
 				interrupt-controller;
 				#interrupt-cells = <2>;
 				interrupts = <GIC_SPI 53 IRQ_TYPE_LEVEL_HIGH>,
 					     <GIC_SPI 54 IRQ_TYPE_LEVEL_HIGH>,
 					     <GIC_SPI 55 IRQ_TYPE_LEVEL_HIGH>,
 					     <GIC_SPI 56 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&coreclk 0>;
 			};
 
 			gpio1: gpio@18140 {
-				compatible = "marvell,orion-gpio";
-				reg = <0x18140 0x40>;
+				compatible = "marvell,armada-370-gpio",
+					     "marvell,orion-gpio";
+				reg = <0x18140 0x40>, <0x181c8 0x08>;
+				reg-names = "gpio", "pwm";
 				ngpios = <28>;
 				gpio-controller;
 				#gpio-cells = <2>;
+				#pwm-cells = <2>;
 				interrupt-controller;
 				#interrupt-cells = <2>;
 				interrupts = <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>,
 					     <GIC_SPI 59 IRQ_TYPE_LEVEL_HIGH>,
 					     <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,
 					     <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&coreclk 0>;
 			};
 
 			system-controller@18200 {
@@ -550,6 +564,16 @@
 				reg = <0xe0000 0x2000>;
 				interrupts = <GIC_SPI 28 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&gateclk 30>;
+				status = "disabled";
+			};
+
+			tdm@b0000 {
+				compatible = "marvell,armada-380-tdm";
+				reg = <0xb0000 0x5000>, <0x18400 0xc>, <0x18730 0x4>;
+				reg-names = "tdm_regs", "pll_regs", "dco_div";
+				interrupts = <0 27 0x4>;
+				clocks = <&gateclk 25>;
+				clock-names = "gateclk";
 				status = "disabled";
 			};
 
