@@ -90,16 +90,12 @@
 			};
 
 			ethernet@34000 {
+				managed = "in-band-status";
 				phy-mode = "sgmii";
 				buffer-manager = <&bm>;
 				bm,pool-long = <3>;
 				bm,pool-short = <1>;
 				status = "okay";
-
-				fixed-link {
-					speed = <1000>;
-					full-duplex;
-				};
 			};
 
 			i2c@11000 {
@@ -183,34 +179,6 @@
 						output-low;
 						line-name = "m.2 devslp";
 					};
-					sfp_los {
-						/* SFP loss of signal */
-						gpio-hog;
-						gpios = <12 GPIO_ACTIVE_HIGH>;
-						input;
-						line-name = "sfp-los";
-					};
-					sfp_tx_fault {
-						/* SFP laser fault */
-						gpio-hog;
-						gpios = <13 GPIO_ACTIVE_HIGH>;
-						input;
-						line-name = "sfp-tx-fault";
-					};
-					sfp_tx_disable {
-						/* SFP transmit disable */
-						gpio-hog;
-						gpios = <14 GPIO_ACTIVE_HIGH>;
-						output-low;
-						line-name = "sfp-tx-disable";
-					};
-					sfp_mod_def0 {
-						/* SFP module present */
-						gpio-hog;
-						gpios = <15 GPIO_ACTIVE_LOW>;
-						input;
-						line-name = "sfp-mod-def0";
-					};
 				};
 
 				/* The MCP3021 is 100kHz clock only */
@@ -264,7 +232,7 @@
 					marvell,function = "sd0";
 				};
 				clearfog_spi1_cs_pins: spi1-cs-pins {
-					marvell,pins = "mpp55";
+					marvell,pins = "mpp59";
 					marvell,function = "spi1";
 				};
 				mikro_pins: mikro-pins {
@@ -284,6 +252,10 @@
 					marvell,pins = "mpp34";
 					marvell,function = "gpio";
 				};
+				tdm_spi1_cs_pins: tdm-spi1-cs-pins {
+					marvell,pins = "mpp55";
+					marvell,function = "spi1";
+				};
 			};
 
 			sata@a8000 {
@@ -293,6 +265,13 @@
 
 			sata@e0000 {
 				/* pinctrl? */
+				status = "okay";
+			};
+
+			tdm@b0000 {
+				pinctrl-0 = <&tdm_pins>;
+				pinctrl-names = "default";
+				pclk-freq-mhz = <8>;
 				status = "okay";
 			};
 
@@ -348,6 +327,17 @@
 				status = "okay";
 			};
 		};
+	};
+
+	sfp: sfp {
+		compatible = "sff,sfp";
+		i2c-bus = <&i2c1>;
+		los-gpio = <&expander0 12 GPIO_ACTIVE_HIGH>;
+		moddef0-gpio = <&expander0 15 GPIO_ACTIVE_LOW>;
+		sfp,ethernet = <&eth2>;
+		tx-disable-gpio = <&expander0 14 GPIO_ACTIVE_HIGH>;
+		tx-fault-gpio = <&expander0 13 GPIO_ACTIVE_HIGH>;
+		power-level = /bits/ 8 <3>;
 	};
 
 	dsa@0 {
@@ -426,12 +416,13 @@
 	 * We don't seem to have the W25Q32 on the
 	 * A1 Rev 2.0 boards, so disable SPI.
 	 * CS0: W25Q32 (doesn't appear to be present)
-	 * CS1:
+	 * CS1: TDM module
 	 * CS2: mikrobus
 	 */
 	pinctrl-0 = <&spi1_pins
 		     &clearfog_spi1_cs_pins
-		     &mikro_spi_pins>;
+		     &mikro_spi_pins
+		     &tdm_spi1_cs_pins>;
 	pinctrl-names = "default";
 	status = "okay";
 
@@ -442,5 +433,15 @@
 		reg = <0>; /* Chip select 0 */
 		spi-max-frequency = <3000000>;
 		status = "disabled";
+	};
+	slic@0 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "mv_slic";
+		reg = <1>; /* Chip select 1 */
+		spi-max-frequency = <3000000>;
+		spi-1byte-cs;
+		spi-cpol;
+		spi-cpha;
 	};
 };
