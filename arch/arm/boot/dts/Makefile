@@ -925,7 +925,9 @@ dtb-$(CONFIG_MACH_ARMADA_38X) += \
 	armada-385-linksys-shelby.dtb \
 	armada-388-clearfog.dtb \
 	armada-388-clearfog-pro.dtb \
+	armada-388-clearfog-pro-emmc.dtb \
 	armada-388-clearfog-base.dtb \
+	armada-388-clearfog-base-emmc.dtb \
 	armada-385-naeba.dtb \
 	armada-388-db.dtb \
 	armada-388-gp.dtb \

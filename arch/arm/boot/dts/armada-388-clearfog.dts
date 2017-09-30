@@ -275,7 +275,7 @@
 				status = "okay";
 			};
 
-			sdhci@d8000 {
+			sdhci0: sdhci@d8000 {
 				bus-width = <4>;
 				cd-gpios = <&gpio0 20 GPIO_ACTIVE_LOW>;
 				no-1-8-v;
